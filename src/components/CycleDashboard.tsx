@@ -14,8 +14,13 @@ import {
   Package,
   QrCode,
   Info,
+  Heart,
+  Sliders,
+  Shield,
+  UserCheck,
 } from 'lucide-react';
 import { useCycle } from '../context/CycleContext';
+import { useAuth } from '../context/AuthContext';
 import { formatDisplayDate, formatDateToIso } from '../utils/cycleEngine';
 
 interface CycleDashboardProps {
@@ -43,6 +48,16 @@ export function CycleDashboard({
     discreetMode,
     saveDailyLog,
   } = useCycle();
+
+  const {
+    user,
+    isAuthenticated,
+    healthProfile,
+    setIsHealthSetupOpen,
+    setIsAuthModalOpen,
+    setAuthModalMode,
+    syncStatus,
+  } = useAuth();
 
   const todayIso = formatDateToIso(new Date());
   const todayLog = dailyLogs[todayIso];
@@ -114,6 +129,86 @@ export function CycleDashboard({
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
+      {/* Account & Girls' Health Setup Profile Bar */}
+      <div className="bg-gradient-to-r from-[#FDF2F4] via-[#FAF7F5] to-white rounded-2xl p-4 sm:p-5 border border-[#C54B6C]/15 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-[#C54B6C] text-white flex items-center justify-center font-serif font-bold text-lg shadow-sm">
+            {isAuthenticated ? (user?.name ? user.name[0].toUpperCase() : 'U') : '🌸'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-serif font-bold text-base text-[#2D2328]">
+                {isAuthenticated ? `${user?.name}’s Health Profile` : 'Personalized Girls’ Health Companion'}
+              </span>
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white text-[#C54B6C] border border-[#C54B6C]/20 shadow-2xs">
+                {healthProfile.lifeStage === 'teen'
+                  ? '🌸 Teen Mode (12-18)'
+                  : healthProfile.healthConditions.includes('PCOS')
+                  ? '💜 PCOS Tracking'
+                  : healthProfile.lifeStage === 'fertility'
+                  ? '✨ Fertility Awareness'
+                  : '🌿 Regular Baseline'}
+              </span>
+              {isAuthenticated && (
+                <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Account Vault Synced
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-[#7B6A74]">
+              <span>Rhythm: {settings.cycleLength}d cycle · {settings.periodLength}d period</span>
+              <span aria-hidden="true">·</span>
+              <span>Flow: {healthProfile.flowBaseline || 'moderate'}</span>
+              {healthProfile.healthConditions.length > 0 && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-[#9F3251] font-medium">
+                    {healthProfile.healthConditions.join(', ')}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => setIsHealthSetupOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-white border border-[#2D2328]/12 text-xs font-semibold text-[#2D2328] hover:text-[#C54B6C] hover:border-[#C54B6C]/30 transition-all flex items-center gap-1.5 shadow-2xs"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#C54B6C]" />
+              <span>Health Setup Settings</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModalMode('signin');
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white border border-[#2D2328]/12 text-xs font-semibold text-[#2D2328] hover:text-[#C54B6C]"
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModalMode('register');
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-[#C54B6C] text-white text-xs font-bold shadow-xs hover:bg-[#B33F5E] flex items-center gap-1"
+              >
+                <span>Save to Account</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Top Banner / Hero Welcome */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#2D2328]/08 shadow-xs">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8">

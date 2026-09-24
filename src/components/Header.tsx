@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Calendar,
   Sparkles,
@@ -10,8 +10,17 @@ import {
   QrCode,
   Heart,
   Package,
+  User,
+  ChevronDown,
+  LogOut,
+  Sliders,
+  Lock,
+  CloudCheck,
+  Shield,
+  CheckCircle2,
 } from 'lucide-react';
 import { useCycle } from '../context/CycleContext';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
   activeTab: string;
@@ -34,8 +43,42 @@ export function Header({
     isCarePlus,
   } = useCycle();
 
+  const {
+    user,
+    isAuthenticated,
+    setIsAuthModalOpen,
+    setAuthModalMode,
+    setIsHealthSetupOpen,
+    healthProfile,
+    logout,
+    quickLogin,
+    lockApp,
+    syncStatus,
+  } = useAuth();
+
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const hoursElapsed = Math.floor(timeSinceLastPadChangeMinutes / 60);
   const minutesElapsed = timeSinceLastPadChangeMinutes % 60;
+
+  const stageBadgeLabel = (() => {
+    if (healthProfile.lifeStage === 'teen') return '🌸 Teen Mode';
+    if (healthProfile.healthConditions.includes('PCOS')) return '💜 PCOS Care';
+    if (healthProfile.lifeStage === 'fertility') return '✨ Fertility Sync';
+    if (healthProfile.lifeStage === 'postpartum') return '🌱 Postpartum';
+    return `${healthProfile.averageCycleLength || 28}d Regular`;
+  })();
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF7F5]/90 backdrop-blur-md border-b border-[#2D2328]/10 transition-colors">
@@ -125,7 +168,7 @@ export function Header({
           </button>
         </nav>
 
-        {/* Zone 3: Primary action & privacy controls */}
+        {/* Zone 3: Primary action, health controls & user account */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Pad Change Timer indicator */}
           <button
@@ -168,22 +211,163 @@ export function Header({
             aria-label="Scan Pad QR Code"
           >
             <QrCode className="w-4 h-4 text-[#C54B6C]" />
-            <span className="hidden sm:inline">Verify QR</span>
+            <span className="hidden lg:inline">Verify QR</span>
           </button>
 
-          {/* Care+ Membership CTA */}
-          <button
-            onClick={() => {
-              if (isCarePlus) {
-                setActiveTab('insights');
-              } else {
-                setActiveTab('store');
-              }
-            }}
-            className="hidden sm:inline-flex items-center px-3.5 py-1.5 text-xs font-medium text-white bg-[#C54B6C] rounded-lg hover:bg-[#B33F5E] shadow-sm transition-colors whitespace-nowrap"
-          >
-            {isCarePlus ? 'Care+ Active' : 'Get Care+'}
-          </button>
+          {/* User Account / Profile Section */}
+          <div className="relative" ref={dropdownRef}>
+            {isAuthenticated ? (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white border border-[#2D2328]/10 hover:border-[#C54B6C]/40 text-xs font-medium text-[#2D2328] transition-all shadow-xs"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#F3C5D0] text-[#7D2840] font-bold flex items-center justify-center text-[11px]">
+                    {user?.name ? user.name[0].toUpperCase() : 'U'}
+                  </div>
+                  <div className="hidden sm:flex flex-col items-start leading-tight">
+                    <span className="font-semibold text-xs text-[#2D2328]">
+                      {user?.name.split(' ')[0]}
+                    </span>
+                    <span className="text-[10px] text-[#C54B6C] font-medium">
+                      {stageBadgeLabel}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-[#7B6A74]" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isProfileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-[#FAF7F5] rounded-2xl border border-[#2D2328]/12 shadow-xl py-3 px-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    {/* User info header */}
+                    <div className="p-2.5 rounded-xl bg-white border border-[#2D2328]/08 mb-2">
+                      <div className="font-bold text-sm text-[#2D2328] flex items-center justify-between">
+                        <span>{user?.name}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                          {syncStatus === 'synced' ? 'Synced' : 'Saving...'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#7B6A74] truncate">
+                        {user?.email}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-[#2D2328]/06 flex items-center justify-between text-[11px] text-[#64555D]">
+                        <span>Profile:</span>
+                        <span className="font-semibold text-[#C54B6C]">
+                          {stageBadgeLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          setIsHealthSetupOpen(true);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs font-semibold text-[#2D2328] hover:bg-white rounded-xl flex items-center gap-2 transition-colors"
+                      >
+                        <Sliders className="w-4 h-4 text-[#C54B6C]" />
+                        <span>Girls’ Health Setup Settings</span>
+                      </button>
+
+                      {healthProfile.pinEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            lockApp();
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs font-semibold text-[#2D2328] hover:bg-white rounded-xl flex items-center gap-2 transition-colors"
+                        >
+                          <Lock className="w-4 h-4 text-[#C54B6C]" />
+                          <span>Lock Vault with PIN</span>
+                        </button>
+                      )}
+
+                      {/* Demo Quick Switcher inside menu */}
+                      <div className="pt-2 border-t border-[#2D2328]/08 mt-2">
+                        <span className="text-[10px] font-semibold text-[#7B6A74] uppercase tracking-wider block px-2 mb-1.5">
+                          Switch Health Baseline
+                        </span>
+                        <div className="grid grid-cols-3 gap-1 px-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsProfileMenuOpen(false);
+                              quickLogin('maya');
+                            }}
+                            className="p-1.5 rounded-lg bg-white border border-[#2D2328]/10 text-[10px] text-center font-medium hover:border-[#C54B6C]"
+                          >
+                            Maya (Teen)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsProfileMenuOpen(false);
+                              quickLogin('sarah');
+                            }}
+                            className="p-1.5 rounded-lg bg-white border border-[#2D2328]/10 text-[10px] text-center font-medium hover:border-[#C54B6C]"
+                          >
+                            Sarah (Reg)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsProfileMenuOpen(false);
+                              quickLogin('elena');
+                            }}
+                            className="p-1.5 rounded-lg bg-white border border-[#2D2328]/10 text-[10px] text-center font-medium hover:border-[#C54B6C]"
+                          >
+                            Elena (PCOS)
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#2D2328]/08 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            logout();
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl flex items-center gap-2 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthModalMode('signin');
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#2D2328] hover:text-[#C54B6C] transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthModalMode('register');
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#C54B6C] hover:bg-[#B33F5E] rounded-xl shadow-sm transition-all"
+                >
+                  Join NIVA
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

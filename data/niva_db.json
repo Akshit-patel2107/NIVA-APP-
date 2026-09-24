@@ -1,0 +1,283 @@
+{
+  "users": [
+    {
+      "id": "usr_maya_teen",
+      "name": "Maya Lin",
+      "email": "maya@niva.health",
+      "passwordHash": "8a0758c9d6351ef1f5a9b7b68943165a:2ea52a236fc15ca7aff77c1894d5973194f6c999413c70934864baa1afe77b61d17f25d26ed2e244722db07ff84a763c08e16a3a62700da699c00470f09ae4ff",
+      "createdAt": "2026-09-24T17:29:47.237Z",
+      "isCarePlus": false,
+      "healthProfile": {
+        "lifeStage": "teen",
+        "age": 15,
+        "averageCycleLength": 26,
+        "isCycleIrregular": true,
+        "averagePeriodLength": 5,
+        "flowBaseline": "moderate",
+        "dysmenorrheaBaseline": "moderate",
+        "healthConditions": [
+          "Sensitive Skin / Pad Allergy"
+        ],
+        "primaryGoals": [
+          "Track period reliably",
+          "Teen puberty confidence",
+          "Discreet school reminders"
+        ],
+        "padChangeReminderHours": 3.5,
+        "discreetNotifications": true,
+        "periodNoticeDaysBefore": 2,
+        "pinCode": "1234",
+        "pinEnabled": true,
+        "notes": "Freshman high school track team. Needs discreet hydration-disguised notifications in class.",
+        "doctorNotes": "Pediatric gynecology exam normal. Mild initial cycle irregularity expected for age."
+      },
+      "settings": {
+        "cycleLength": 26,
+        "periodLength": 5,
+        "lastPeriodStart": "2026-09-15",
+        "isTeenMode": true,
+        "padChangeIntervalHours": 3.5,
+        "notificationsEnabled": true
+      },
+      "padInventory": {
+        "padsRemaining": 14,
+        "activeBatchCode": "NIVA-TEEN-1102",
+        "lastChangedAt": "2026-09-24T15:29:47.237Z",
+        "packSize": 16,
+        "productName": "NIVA Teen First Cycle Starter Pack"
+      },
+      "dailyLogs": {
+        "2026-09-15": {
+          "date": "2026-09-15",
+          "flow": "heavy",
+          "symptoms": [
+            "Cramps",
+            "Lower Back Ache",
+            "Fatigue"
+          ],
+          "moods": [
+            "Sensitive",
+            "Low Energy"
+          ],
+          "sleepHours": 8,
+          "waterGlasses": 7,
+          "painLevel": 5,
+          "notes": "School day, used heating patch and NIVA Teen pad."
+        },
+        "2026-09-23": {
+          "date": "2026-09-23",
+          "flow": "none",
+          "symptoms": [
+            "Clear High Energy"
+          ],
+          "moods": [
+            "Joyful",
+            "Energetic"
+          ],
+          "sleepHours": 8.5,
+          "waterGlasses": 8,
+          "painLevel": 0,
+          "notes": "Great track practice today."
+        }
+      }
+    },
+    {
+      "id": "usr_sarah_regular",
+      "name": "Dr. Sarah Chen",
+      "email": "sarah@niva.health",
+      "passwordHash": "cb42c3abca2be0f380bf7ba66e041b5c:66bd428fb662ef0a3c43d3e694eb6ad0488b1edcf6209b3f998d7dd69e5cc39e2d2bebb9a1be5fec82d6eec61e5f83e00b0bf874ee3e1473e3e0b340f07ce14c",
+      "createdAt": "2026-09-24T17:29:47.306Z",
+      "isCarePlus": true,
+      "healthProfile": {
+        "lifeStage": "regular",
+        "age": 28,
+        "averageCycleLength": 28,
+        "isCycleIrregular": false,
+        "averagePeriodLength": 5,
+        "flowBaseline": "moderate",
+        "dysmenorrheaBaseline": "mild",
+        "healthConditions": [],
+        "primaryGoals": [
+          "Track period reliably",
+          "Optimize energy with cycle phases",
+          "Predict fertile window"
+        ],
+        "padChangeReminderHours": 4,
+        "discreetNotifications": false,
+        "periodNoticeDaysBefore": 3,
+        "pinCode": "",
+        "pinEnabled": false,
+        "notes": "Biomedical researcher. Tracks ovulation rhythms for peak cognitive focus."
+      },
+      "settings": {
+        "cycleLength": 28,
+        "periodLength": 5,
+        "lastPeriodStart": "2026-09-11",
+        "isTeenMode": false,
+        "padChangeIntervalHours": 4,
+        "notificationsEnabled": true
+      },
+      "padInventory": {
+        "padsRemaining": 18,
+        "activeBatchCode": "NIVA-ORG-2849",
+        "lastChangedAt": "2026-09-24T14:29:47.306Z",
+        "packSize": 14,
+        "productName": "NIVA Ultra-Thin Day Comfort"
+      },
+      "dailyLogs": {
+        "2026-09-11": {
+          "date": "2026-09-11",
+          "flow": "medium",
+          "symptoms": [
+            "Mild Cramps"
+          ],
+          "moods": [
+            "Reflective"
+          ],
+          "sleepHours": 7.5,
+          "waterGlasses": 8,
+          "painLevel": 2,
+          "notes": "Started morning cycle. Red raspberry leaf tea helped soothe uterus."
+        },
+        "2026-09-22": {
+          "date": "2026-09-22",
+          "flow": "none",
+          "symptoms": [
+            "Good Skin",
+            "High Libido"
+          ],
+          "moods": [
+            "Energized",
+            "Focused"
+          ],
+          "cervicalMucus": "egg-white",
+          "sleepHours": 8,
+          "waterGlasses": 9,
+          "painLevel": 0,
+          "notes": "Fertile window sensation, ovulation peak."
+        }
+      }
+    },
+    {
+      "id": "usr_elena_pcos",
+      "name": "Elena Rostova",
+      "email": "elena@niva.health",
+      "passwordHash": "dee657493d077e80a9db70cc82935c3d:b82a3bfe705eab6246c667b430d17125fd01b675a66e5f5ee7319a3a1ddf5255819c356864885c64a0ebe3e632fece2c6c58581f0b2d1943db97280e94db55d8",
+      "createdAt": "2026-09-24T17:29:47.355Z",
+      "isCarePlus": true,
+      "healthProfile": {
+        "lifeStage": "regular",
+        "age": 30,
+        "averageCycleLength": 35,
+        "isCycleIrregular": true,
+        "averagePeriodLength": 6,
+        "flowBaseline": "heavy",
+        "dysmenorrheaBaseline": "severe",
+        "healthConditions": [
+          "PCOS",
+          "Sensitive Skin / Pad Allergy",
+          "PMDD"
+        ],
+        "primaryGoals": [
+          "Manage cramps & symptoms",
+          "Prevent skin irritation with organic pads",
+          "Monitor hormonal shifts"
+        ],
+        "padChangeReminderHours": 3,
+        "discreetNotifications": true,
+        "periodNoticeDaysBefore": 3,
+        "pinCode": "9988",
+        "pinEnabled": true,
+        "notes": "Diagnosed with PCOS. 100% chlorine-free organic pads prevent contact dermatitis."
+      },
+      "settings": {
+        "cycleLength": 35,
+        "periodLength": 6,
+        "lastPeriodStart": "2026-09-02",
+        "isTeenMode": false,
+        "padChangeIntervalHours": 3,
+        "notificationsEnabled": true
+      },
+      "padInventory": {
+        "padsRemaining": 9,
+        "activeBatchCode": "NIVA-NIGHT-9481",
+        "lastChangedAt": "2026-09-24T15:59:47.355Z",
+        "packSize": 10,
+        "productName": "NIVA Extra Long Overnight Sanctuary"
+      },
+      "dailyLogs": {
+        "2026-09-02": {
+          "date": "2026-09-02",
+          "flow": "heavy",
+          "symptoms": [
+            "Severe Cramps",
+            "Bloating",
+            "Headache"
+          ],
+          "moods": [
+            "Anxious",
+            "Fatigued"
+          ],
+          "sleepHours": 6.5,
+          "waterGlasses": 6,
+          "painLevel": 7,
+          "notes": "Heavy flow day 1. Using magnesium glycinate and NIVA Overnight Sanctuary."
+        }
+      }
+    },
+    {
+      "id": "usr_0ffa698b710cd7ab",
+      "name": "Aria Test",
+      "email": "aria@example.com",
+      "passwordHash": "b333e9c00c647a14fd4d9fdb92267bc6:121ddb78f6d0966983eedbaa5b3a4b412ee366ba2c2f73e7f8a0b14a856998dae6f056d0a8a59cbcbf58bb6a9cb574b08cb1a1a281f8e3b5e82fdc42d6aaf619",
+      "createdAt": "2026-09-24T17:29:52.560Z",
+      "isCarePlus": false,
+      "healthProfile": {
+        "lifeStage": "regular",
+        "age": 24,
+        "averageCycleLength": 29,
+        "isCycleIrregular": false,
+        "averagePeriodLength": 5,
+        "flowBaseline": "moderate",
+        "dysmenorrheaBaseline": "mild",
+        "healthConditions": [],
+        "primaryGoals": [
+          "Track period reliably"
+        ],
+        "padChangeReminderHours": 4,
+        "discreetNotifications": false,
+        "periodNoticeDaysBefore": 2,
+        "pinCode": "",
+        "pinEnabled": false,
+        "notes": "",
+        "doctorNotes": ""
+      },
+      "settings": {
+        "cycleLength": 29,
+        "periodLength": 5,
+        "lastPeriodStart": "2026-09-10",
+        "isTeenMode": false,
+        "padChangeIntervalHours": 4,
+        "notificationsEnabled": true
+      },
+      "padInventory": {
+        "padsRemaining": 14,
+        "activeBatchCode": "NIVA-ORG-2849",
+        "lastChangedAt": "2026-09-24T15:29:52.560Z",
+        "packSize": 14,
+        "productName": "NIVA Ultra-Thin Day Comfort"
+      },
+      "dailyLogs": {}
+    }
+  ],
+  "sessions": {
+    "62a136585cdc67940e82752aec62015b531495151477efd8a00876facca3f852": {
+      "userId": "usr_maya_teen",
+      "expiresAt": 1792862988440
+    },
+    "be2b0324fb7fe82caea86a28ae9f97e21146466b7046dd91d7a1d9b465ae532f": {
+      "userId": "usr_0ffa698b710cd7ab",
+      "expiresAt": 1792862992560
+    }
+  }
+}

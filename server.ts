@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
@@ -13,7 +15,344 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+// Setup Persistent Storage Directory & Database
+const DATA_DIR = path.join(__dirname, 'data');
+const DB_FILE = path.join(DATA_DIR, 'niva_db.json');
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Password hashing utilities using Node.js crypto
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+  try {
+    const [salt, key] = storedHash.split(':');
+    if (!salt || !key) return false;
+    const keyBuffer = Buffer.from(key, 'hex');
+    const derivedKey = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(keyBuffer, derivedKey);
+  } catch {
+    return false;
+  }
+}
+
+// Pre-seed realistic user cycle start dates relative to current date
+function getIsoDateDaysAgo(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+interface UserRecord {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  createdAt: string;
+  isCarePlus: boolean;
+  healthProfile: {
+    lifeStage: 'teen' | 'regular' | 'fertility' | 'postpartum' | 'perimenopause';
+    age?: number;
+    averageCycleLength: number;
+    isCycleIrregular: boolean;
+    averagePeriodLength: number;
+    flowBaseline: 'light' | 'moderate' | 'heavy' | 'very_heavy';
+    dysmenorrheaBaseline: 'none' | 'mild' | 'moderate' | 'severe';
+    healthConditions: string[];
+    primaryGoals: string[];
+    padChangeReminderHours: number;
+    discreetNotifications: boolean;
+    periodNoticeDaysBefore: number;
+    pinCode?: string;
+    pinEnabled: boolean;
+    notes?: string;
+    doctorNotes?: string;
+  };
+  settings: {
+    cycleLength: number;
+    periodLength: number;
+    lastPeriodStart: string;
+    isTeenMode: boolean;
+    padChangeIntervalHours: number;
+    notificationsEnabled: boolean;
+  };
+  padInventory: {
+    padsRemaining: number;
+    activeBatchCode: string;
+    lastChangedAt: string;
+    packSize: number;
+    productName: string;
+  };
+  dailyLogs: Record<string, any>;
+}
+
+interface DatabaseSchema {
+  users: UserRecord[];
+  sessions: Record<string, { userId: string; expiresAt: number }>;
+}
+
+function getInitialDatabase(): DatabaseSchema {
+  const mayaStart = getIsoDateDaysAgo(9);
+  const sarahStart = getIsoDateDaysAgo(13);
+  const elenaStart = getIsoDateDaysAgo(22);
+
+  return {
+    users: [
+      {
+        id: 'usr_maya_teen',
+        name: 'Maya Lin',
+        email: 'maya@niva.health',
+        passwordHash: hashPassword('Password123!'),
+        createdAt: new Date().toISOString(),
+        isCarePlus: false,
+        healthProfile: {
+          lifeStage: 'teen',
+          age: 15,
+          averageCycleLength: 26,
+          isCycleIrregular: true,
+          averagePeriodLength: 5,
+          flowBaseline: 'moderate',
+          dysmenorrheaBaseline: 'moderate',
+          healthConditions: ['Sensitive Skin / Pad Allergy'],
+          primaryGoals: ['Track period reliably', 'Teen puberty confidence', 'Discreet school reminders'],
+          padChangeReminderHours: 3.5,
+          discreetNotifications: true,
+          periodNoticeDaysBefore: 2,
+          pinCode: '1234',
+          pinEnabled: true,
+          notes: 'Freshman high school track team. Needs discreet hydration-disguised notifications in class.',
+          doctorNotes: 'Pediatric gynecology exam normal. Mild initial cycle irregularity expected for age.',
+        },
+        settings: {
+          cycleLength: 26,
+          periodLength: 5,
+          lastPeriodStart: mayaStart,
+          isTeenMode: true,
+          padChangeIntervalHours: 3.5,
+          notificationsEnabled: true,
+        },
+        padInventory: {
+          padsRemaining: 14,
+          activeBatchCode: 'NIVA-TEEN-1102',
+          lastChangedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          packSize: 16,
+          productName: 'NIVA Teen First Cycle Starter Pack',
+        },
+        dailyLogs: {
+          [mayaStart]: {
+            date: mayaStart,
+            flow: 'heavy',
+            symptoms: ['Cramps', 'Lower Back Ache', 'Fatigue'],
+            moods: ['Sensitive', 'Low Energy'],
+            sleepHours: 8,
+            waterGlasses: 7,
+            painLevel: 5,
+            notes: 'School day, used heating patch and NIVA Teen pad.',
+          },
+          [getIsoDateDaysAgo(1)]: {
+            date: getIsoDateDaysAgo(1),
+            flow: 'none',
+            symptoms: ['Clear High Energy'],
+            moods: ['Joyful', 'Energetic'],
+            sleepHours: 8.5,
+            waterGlasses: 8,
+            painLevel: 0,
+            notes: 'Great track practice today.',
+          },
+        },
+      },
+      {
+        id: 'usr_sarah_regular',
+        name: 'Dr. Sarah Chen',
+        email: 'sarah@niva.health',
+        passwordHash: hashPassword('Password123!'),
+        createdAt: new Date().toISOString(),
+        isCarePlus: true,
+        healthProfile: {
+          lifeStage: 'regular',
+          age: 28,
+          averageCycleLength: 28,
+          isCycleIrregular: false,
+          averagePeriodLength: 5,
+          flowBaseline: 'moderate',
+          dysmenorrheaBaseline: 'mild',
+          healthConditions: [],
+          primaryGoals: ['Track period reliably', 'Optimize energy with cycle phases', 'Predict fertile window'],
+          padChangeReminderHours: 4,
+          discreetNotifications: false,
+          periodNoticeDaysBefore: 3,
+          pinCode: '',
+          pinEnabled: false,
+          notes: 'Biomedical researcher. Tracks ovulation rhythms for peak cognitive focus.',
+        },
+        settings: {
+          cycleLength: 28,
+          periodLength: 5,
+          lastPeriodStart: sarahStart,
+          isTeenMode: false,
+          padChangeIntervalHours: 4,
+          notificationsEnabled: true,
+        },
+        padInventory: {
+          padsRemaining: 18,
+          activeBatchCode: 'NIVA-ORG-2849',
+          lastChangedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          packSize: 14,
+          productName: 'NIVA Ultra-Thin Day Comfort',
+        },
+        dailyLogs: {
+          [sarahStart]: {
+            date: sarahStart,
+            flow: 'medium',
+            symptoms: ['Mild Cramps'],
+            moods: ['Reflective'],
+            sleepHours: 7.5,
+            waterGlasses: 8,
+            painLevel: 2,
+            notes: 'Started morning cycle. Red raspberry leaf tea helped soothe uterus.',
+          },
+          [getIsoDateDaysAgo(2)]: {
+            date: getIsoDateDaysAgo(2),
+            flow: 'none',
+            symptoms: ['Good Skin', 'High Libido'],
+            moods: ['Energized', 'Focused'],
+            cervicalMucus: 'egg-white',
+            sleepHours: 8,
+            waterGlasses: 9,
+            painLevel: 0,
+            notes: 'Fertile window sensation, ovulation peak.',
+          },
+        },
+      },
+      {
+        id: 'usr_elena_pcos',
+        name: 'Elena Rostova',
+        email: 'elena@niva.health',
+        passwordHash: hashPassword('Password123!'),
+        createdAt: new Date().toISOString(),
+        isCarePlus: true,
+        healthProfile: {
+          lifeStage: 'regular',
+          age: 30,
+          averageCycleLength: 35,
+          isCycleIrregular: true,
+          averagePeriodLength: 6,
+          flowBaseline: 'heavy',
+          dysmenorrheaBaseline: 'severe',
+          healthConditions: ['PCOS', 'Sensitive Skin / Pad Allergy', 'PMDD'],
+          primaryGoals: ['Manage cramps & symptoms', 'Prevent skin irritation with organic pads', 'Monitor hormonal shifts'],
+          padChangeReminderHours: 3,
+          discreetNotifications: true,
+          periodNoticeDaysBefore: 3,
+          pinCode: '9988',
+          pinEnabled: true,
+          notes: 'Diagnosed with PCOS. 100% chlorine-free organic pads prevent contact dermatitis.',
+        },
+        settings: {
+          cycleLength: 35,
+          periodLength: 6,
+          lastPeriodStart: elenaStart,
+          isTeenMode: false,
+          padChangeIntervalHours: 3,
+          notificationsEnabled: true,
+        },
+        padInventory: {
+          padsRemaining: 9,
+          activeBatchCode: 'NIVA-NIGHT-9481',
+          lastChangedAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000).toISOString(),
+          packSize: 10,
+          productName: 'NIVA Extra Long Overnight Sanctuary',
+        },
+        dailyLogs: {
+          [elenaStart]: {
+            date: elenaStart,
+            flow: 'heavy',
+            symptoms: ['Severe Cramps', 'Bloating', 'Headache'],
+            moods: ['Anxious', 'Fatigued'],
+            sleepHours: 6.5,
+            waterGlasses: 6,
+            painLevel: 7,
+            notes: 'Heavy flow day 1. Using magnesium glycinate and NIVA Overnight Sanctuary.',
+          },
+        },
+      },
+    ],
+    sessions: {},
+  };
+}
+
+function loadDatabase(): DatabaseSchema {
+  try {
+    if (!fs.existsSync(DB_FILE)) {
+      const initial = getInitialDatabase();
+      saveDatabase(initial);
+      return initial;
+    }
+    const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (!parsed.users || !Array.isArray(parsed.users)) {
+      const initial = getInitialDatabase();
+      saveDatabase(initial);
+      return initial;
+    }
+    return parsed;
+  } catch (err) {
+    console.error('Failed to load database, recreating defaults:', err);
+    const initial = getInitialDatabase();
+    saveDatabase(initial);
+    return initial;
+  }
+}
+
+function saveDatabase(data: DatabaseSchema) {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save database:', err);
+  }
+}
+
+// In-memory cache synced with disk
+let db = loadDatabase();
+
+// Middleware: Authenticate Session Token
+function authenticateUser(req: Request, res: Response, next: () => void) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required. Please sign in to your NIVA account.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const session = db.sessions[token];
+
+  if (!session || session.expiresAt < Date.now()) {
+    if (session) {
+      delete db.sessions[token];
+      saveDatabase(db);
+    }
+    return res.status(401).json({ error: 'Session expired. Please log in again.' });
+  }
+
+  const user = db.users.find((u) => u.id === session.userId);
+  if (!user) {
+    return res.status(401).json({ error: 'User account not found.' });
+  }
+
+  (req as any).user = user;
+  (req as any).token = token;
+  next();
+}
 
 // Initialize GoogleGenAI SDK server-side
 const apiKey = process.env.GEMINI_API_KEY || '';
@@ -24,6 +363,278 @@ const ai = new GoogleGenAI({
       'User-Agent': 'aistudio-build',
     },
   },
+});
+
+// ================= AUTHENTICATION & ACCOUNT APIS =================
+
+// Register a new user with tailored Girls' Health Setup
+app.post('/api/auth/register', (req: Request, res: Response) => {
+  try {
+    const { name, email, password, healthProfile, settings, padInventory } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      return res.status(409).json({ error: 'An account with this email address already exists. Please sign in.' });
+    }
+
+    const userId = `usr_${crypto.randomBytes(8).toString('hex')}`;
+    const passwordHash = hashPassword(password);
+
+    const defaultProfile = {
+      lifeStage: healthProfile?.lifeStage || 'regular',
+      age: healthProfile?.age || 24,
+      averageCycleLength: healthProfile?.averageCycleLength || settings?.cycleLength || 28,
+      isCycleIrregular: Boolean(healthProfile?.isCycleIrregular),
+      averagePeriodLength: healthProfile?.averagePeriodLength || settings?.periodLength || 5,
+      flowBaseline: healthProfile?.flowBaseline || 'moderate',
+      dysmenorrheaBaseline: healthProfile?.dysmenorrheaBaseline || 'mild',
+      healthConditions: Array.isArray(healthProfile?.healthConditions) ? healthProfile.healthConditions : [],
+      primaryGoals: Array.isArray(healthProfile?.primaryGoals) ? healthProfile.primaryGoals : ['Track period reliably'],
+      padChangeReminderHours: healthProfile?.padChangeReminderHours || 4,
+      discreetNotifications: Boolean(healthProfile?.discreetNotifications),
+      periodNoticeDaysBefore: healthProfile?.periodNoticeDaysBefore || 2,
+      pinCode: healthProfile?.pinCode || '',
+      pinEnabled: Boolean(healthProfile?.pinEnabled && healthProfile?.pinCode),
+      notes: healthProfile?.notes || '',
+      doctorNotes: healthProfile?.doctorNotes || '',
+    };
+
+    const defaultSettings = {
+      cycleLength: settings?.cycleLength || defaultProfile.averageCycleLength || 28,
+      periodLength: settings?.periodLength || defaultProfile.averagePeriodLength || 5,
+      lastPeriodStart: settings?.lastPeriodStart || getIsoDateDaysAgo(14),
+      isTeenMode: defaultProfile.lifeStage === 'teen',
+      padChangeIntervalHours: defaultProfile.padChangeReminderHours || 4,
+      notificationsEnabled: true,
+    };
+
+    const defaultInventory = {
+      padsRemaining: padInventory?.padsRemaining ?? 14,
+      activeBatchCode: padInventory?.activeBatchCode || 'NIVA-ORG-2849',
+      lastChangedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      packSize: padInventory?.packSize || 14,
+      productName: padInventory?.productName || (defaultProfile.lifeStage === 'teen' ? 'NIVA Teen First Cycle Starter Pack' : 'NIVA Ultra-Thin Day Comfort'),
+    };
+
+    const newUser: UserRecord = {
+      id: userId,
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+      isCarePlus: false,
+      healthProfile: defaultProfile,
+      settings: defaultSettings,
+      padInventory: defaultInventory,
+      dailyLogs: {},
+    };
+
+    db.users.push(newUser);
+
+    // Create session token (valid for 30 days)
+    const token = crypto.randomBytes(32).toString('hex');
+    db.sessions[token] = {
+      userId,
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    };
+
+    saveDatabase(db);
+
+    return res.status(201).json({
+      token,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        createdAt: newUser.createdAt,
+        isCarePlus: newUser.isCarePlus,
+      },
+      accountData: {
+        healthProfile: newUser.healthProfile,
+        settings: newUser.settings,
+        padInventory: newUser.padInventory,
+        dailyLogs: newUser.dailyLogs,
+        isCarePlus: newUser.isCarePlus,
+      },
+    });
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    return res.status(500).json({ error: 'Failed to create account. Please try again.' });
+  }
+});
+
+// Login
+app.post('/api/auth/login', (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    // Generate session token
+    const token = crypto.randomBytes(32).toString('hex');
+    db.sessions[token] = {
+      userId: user.id,
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    };
+
+    saveDatabase(db);
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+        isCarePlus: user.isCarePlus,
+      },
+      accountData: {
+        healthProfile: user.healthProfile,
+        settings: user.settings,
+        padInventory: user.padInventory,
+        dailyLogs: user.dailyLogs,
+        isCarePlus: user.isCarePlus,
+      },
+    });
+  } catch (error: any) {
+    console.error('Login error:', error);
+    return res.status(500).json({ error: 'Login failed. Please try again.' });
+  }
+});
+
+// Current User Details
+app.get('/api/auth/me', authenticateUser, (req: Request, res: Response) => {
+  const user = (req as any).user as UserRecord;
+  return res.json({
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      isCarePlus: user.isCarePlus,
+    },
+    accountData: {
+      healthProfile: user.healthProfile,
+      settings: user.settings,
+      padInventory: user.padInventory,
+      dailyLogs: user.dailyLogs,
+      isCarePlus: user.isCarePlus,
+    },
+  });
+});
+
+// Logout
+app.post('/api/auth/logout', authenticateUser, (req: Request, res: Response) => {
+  const token = (req as any).token as string;
+  delete db.sessions[token];
+  saveDatabase(db);
+  return res.json({ success: true, message: 'Logged out successfully.' });
+});
+
+// Get User Account Data
+app.get('/api/user/account-data', authenticateUser, (req: Request, res: Response) => {
+  const user = (req as any).user as UserRecord;
+  return res.json({
+    healthProfile: user.healthProfile,
+    settings: user.settings,
+    padInventory: user.padInventory,
+    dailyLogs: user.dailyLogs,
+    isCarePlus: user.isCarePlus,
+  });
+});
+
+// Save / Synchronize User Account Data
+app.put('/api/user/account-data', authenticateUser, (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user as UserRecord;
+    const { healthProfile, settings, padInventory, dailyLogs, isCarePlus } = req.body;
+
+    const userIndex = db.users.findIndex((u) => u.id === user.id);
+    if (userIndex === -1) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (healthProfile) {
+      db.users[userIndex].healthProfile = {
+        ...db.users[userIndex].healthProfile,
+        ...healthProfile,
+      };
+    }
+
+    if (settings) {
+      db.users[userIndex].settings = {
+        ...db.users[userIndex].settings,
+        ...settings,
+      };
+    }
+
+    if (padInventory) {
+      db.users[userIndex].padInventory = {
+        ...db.users[userIndex].padInventory,
+        ...padInventory,
+      };
+    }
+
+    if (dailyLogs) {
+      db.users[userIndex].dailyLogs = {
+        ...db.users[userIndex].dailyLogs,
+        ...dailyLogs,
+      };
+    }
+
+    if (typeof isCarePlus === 'boolean') {
+      db.users[userIndex].isCarePlus = isCarePlus;
+    }
+
+    saveDatabase(db);
+
+    return res.json({
+      success: true,
+      accountData: {
+        healthProfile: db.users[userIndex].healthProfile,
+        settings: db.users[userIndex].settings,
+        padInventory: db.users[userIndex].padInventory,
+        dailyLogs: db.users[userIndex].dailyLogs,
+        isCarePlus: db.users[userIndex].isCarePlus,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error updating user account data:', error);
+    return res.status(500).json({ error: 'Failed to synchronize account data.' });
+  }
+});
+
+// Verify 4-digit Privacy PIN
+app.post('/api/user/verify-pin', authenticateUser, (req: Request, res: Response) => {
+  const user = (req as any).user as UserRecord;
+  const { pin } = req.body;
+
+  if (!user.healthProfile?.pinEnabled || !user.healthProfile?.pinCode) {
+    return res.json({ verified: true, hasPin: false });
+  }
+
+  if (user.healthProfile.pinCode === String(pin).trim()) {
+    return res.json({ verified: true });
+  }
+
+  return res.status(403).json({ verified: false, error: 'Incorrect 4-digit PIN.' });
 });
 
 // Verified NIVA Pad Batch Database
@@ -131,7 +742,12 @@ app.post('/api/ai/cycle-insights', async (req: Request, res: Response) => {
       symptoms = [],
       moods = [],
       notes = '',
+      healthProfile = null,
     } = req.body;
+
+    const profileContext = healthProfile
+      ? `\n- User Health Profile: Life Stage: ${healthProfile.lifeStage} (Age: ${healthProfile.age || 'N/A'}), Conditions: ${healthProfile.healthConditions?.join(', ') || 'None reported'}, Baseline Flow: ${healthProfile.flowBaseline || 'moderate'}, Cramp Severity Baseline: ${healthProfile.dysmenorrheaBaseline || 'mild'}`
+      : '';
 
     if (!apiKey) {
       // Fallback if API key is not present in local test environment
@@ -152,9 +768,9 @@ The user is tracking their menstrual cycle with the following data:
 - Normal Period Duration: ${periodLength} days
 - Recent Symptoms Logged: ${symptoms.length ? symptoms.join(', ') : 'None logged today'}
 - Recent Moods Logged: ${moods.length ? moods.join(', ') : 'Balanced/Calm'}
-- User Notes: ${notes || 'None'}
+- User Notes: ${notes || 'None'}${profileContext}
 
-Please provide an empathetic, clear, personalized wellness analysis tailored to this specific cycle day and phase.
+Please provide an empathetic, clear, personalized wellness analysis tailored to this specific cycle day, phase, and health background.
 Format your response as valid JSON with this exact structure:
 {
   "summary": "1-2 concise, empowering sentences describing what is happening hormonally in the body right now.",

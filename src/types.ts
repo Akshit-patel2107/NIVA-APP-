@@ -2,6 +2,52 @@ export type FlowIntensity = 'none' | 'spotting' | 'light' | 'medium' | 'heavy';
 
 export type CyclePhase = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
 
+export type LifeStage = 'teen' | 'regular' | 'fertility' | 'postpartum' | 'perimenopause';
+export type FlowBaseline = 'light' | 'moderate' | 'heavy' | 'very_heavy';
+export type DysmenorrheaLevel = 'none' | 'mild' | 'moderate' | 'severe';
+
+export interface GirlsHealthProfile {
+  lifeStage: LifeStage;
+  age?: number;
+  averageCycleLength: number; // e.g. 28
+  isCycleIrregular: boolean;
+  averagePeriodLength: number; // e.g. 5
+  flowBaseline: FlowBaseline;
+  dysmenorrheaBaseline: DysmenorrheaLevel;
+  healthConditions: string[]; // e.g. ['PCOS', 'Endometriosis', 'PMDD', 'Sensitive Skin / Pad Allergy', 'Thyroid Irregularity']
+  primaryGoals: string[]; // e.g. ['Track period reliably', 'Manage cramps & symptoms', 'Predict fertile window', 'Prevent skin irritation with organic pads', 'Teen puberty confidence']
+  padChangeReminderHours: number; // e.g. 4
+  discreetNotifications: boolean; // disguise alerts as "Drink water" / "Health pause"
+  periodNoticeDaysBefore: number; // e.g. 2
+  pinCode?: string; // 4-digit security PIN for private medical data
+  pinEnabled: boolean;
+  notes?: string;
+  doctorNotes?: string;
+}
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  isCarePlus: boolean;
+  healthProfile: GirlsHealthProfile;
+  settings: CycleSettings;
+  padInventory: PadInventory;
+  dailyLogs: Record<string, DailyLog>;
+}
+
+export interface AuthSession {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+    isCarePlus: boolean;
+  };
+  token: string;
+}
+
 export interface DailyLog {
   date: string; // YYYY-MM-DD
   flow: FlowIntensity;

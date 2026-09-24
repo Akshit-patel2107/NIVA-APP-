@@ -3,7 +3,7 @@ import {
   CycleSettings,
   DailyLog,
   PadInventory,
-  NIVAProduct,
+  GirlsHealthProfile,
 } from '../types';
 import {
   calculateCycleStatus,
@@ -11,7 +11,7 @@ import {
   addDays,
   CycleStatus,
 } from '../utils/cycleEngine';
-import { NIVA_PRODUCTS } from '../data/mockData';
+import { useAuth } from './AuthContext';
 
 interface CycleContextType {
   settings: CycleSettings;
@@ -34,6 +34,7 @@ interface CycleContextType {
   timeSinceLastPadChangeMinutes: number;
   isPadChangeDue: boolean;
   resetAllData: () => void;
+  healthProfile: GirlsHealthProfile;
 }
 
 const STORAGE_KEY = 'niva_menstrual_wellness_v1';
@@ -41,6 +42,8 @@ const STORAGE_KEY = 'niva_menstrual_wellness_v1';
 const CycleContext = createContext<CycleContextType | undefined>(undefined);
 
 export function CycleProvider({ children }: { children: React.ReactNode }) {
+  const { user, initialAccountData, syncAccountData, healthProfile } = useAuth();
+
   // Compute default initial lastPeriodStart to 13 days ago (puts user at Day 14 Ovulation Window for immediate richness)
   const defaultLastPeriodStart = useMemo(() => {
     const d = new Date();
@@ -65,7 +68,9 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
     };
   });
 
-  const [discreetMode, setDiscreetMode] = useState<boolean>(false);
+  const [discreetMode, setDiscreetMode] = useState<boolean>(() => {
+    return Boolean(healthProfile?.discreetNotifications);
+  });
   const [selectedDate, setSelectedDate] = useState<string>(() => formatDateToIso(new Date()));
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
   const [isCarePlus, setIsCarePlus] = useState<boolean>(false);
@@ -80,7 +85,7 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
     return {
       padsRemaining: 12,
       activeBatchCode: 'NIVA-ORG-2849',
-      lastChangedAt: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(), // 2.5 hours ago
+      lastChangedAt: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString(),
       packSize: 14,
       productName: 'NIVA Ultra-Thin Day Comfort',
     };
@@ -94,7 +99,6 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
       console.error(e);
     }
 
-    // Default seeded historical logs for realistic trends
     const today = new Date();
     const todayIso = formatDateToIso(today);
     const dayAgo1 = formatDateToIso(addDays(today, -1));
@@ -148,6 +152,31 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
     };
   });
 
+  // Whenever user switches or logs in and backend provides account data:
+  useEffect(() => {
+    if (initialAccountData) {
+      if (initialAccountData.settings) {
+        setSettings(initialAccountData.settings);
+      }
+      if (initialAccountData.padInventory) {
+        setPadInventory(initialAccountData.padInventory);
+      }
+      if (initialAccountData.dailyLogs) {
+        setDailyLogs(initialAccountData.dailyLogs);
+      }
+      if (typeof initialAccountData.isCarePlus === 'boolean') {
+        setIsCarePlus(initialAccountData.isCarePlus);
+      }
+    }
+  }, [initialAccountData]);
+
+  // Synchronize discreet mode with healthProfile preferences
+  useEffect(() => {
+    if (healthProfile?.discreetNotifications !== undefined) {
+      setDiscreetMode(healthProfile.discreetNotifications);
+    }
+  }, [healthProfile?.discreetNotifications]);
+
   // Calculate live cycle status
   const cycleStatus = useMemo(() => {
     return calculateCycleStatus(settings);
@@ -156,7 +185,7 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
   // Track elapsed pad change timer
   const [now, setNow] = useState<number>(Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000); // update every 30s
+    const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -171,7 +200,7 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
     return timeSinceLastPadChangeMinutes >= targetMinutes;
   }, [timeSinceLastPadChangeMinutes, settings.padChangeIntervalHours]);
 
-  // Persist state changes
+  // Persist state changes locally
   useEffect(() => {
     try {
       localStorage.setItem(`${STORAGE_KEY}_settings`, JSON.stringify(settings));
@@ -197,14 +226,22 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
   }, [padInventory]);
 
   const updateSettings = (newSettings: Partial<CycleSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => {
+      const merged = { ...prev, ...newSettings };
+      syncAccountData({ settings: merged });
+      return merged;
+    });
   };
 
   const saveDailyLog = (log: DailyLog) => {
-    setDailyLogs((prev) => ({
-      ...prev,
-      [log.date]: log,
-    }));
+    setDailyLogs((prev) => {
+      const updated = {
+        ...prev,
+        [log.date]: log,
+      };
+      syncAccountData({ dailyLogs: updated });
+      return updated;
+    });
   };
 
   const openLogModalForDate = (date: string) => {
@@ -213,20 +250,33 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const changePadNow = () => {
-    setPadInventory((prev) => ({
-      ...prev,
-      padsRemaining: Math.max(0, prev.padsRemaining - 1),
-      lastChangedAt: new Date().toISOString(),
-    }));
+    setPadInventory((prev) => {
+      const updated = {
+        ...prev,
+        padsRemaining: Math.max(0, prev.padsRemaining - 1),
+        lastChangedAt: new Date().toISOString(),
+      };
+      syncAccountData({ padInventory: updated });
+      return updated;
+    });
   };
 
   const restockPads = (count: number, batchCode?: string, productName?: string) => {
-    setPadInventory((prev) => ({
-      ...prev,
-      padsRemaining: prev.padsRemaining + count,
-      activeBatchCode: batchCode || prev.activeBatchCode,
-      productName: productName || prev.productName,
-    }));
+    setPadInventory((prev) => {
+      const updated = {
+        ...prev,
+        padsRemaining: prev.padsRemaining + count,
+        activeBatchCode: batchCode || prev.activeBatchCode,
+        productName: productName || prev.productName,
+      };
+      syncAccountData({ padInventory: updated });
+      return updated;
+    });
+  };
+
+  const handleSetCarePlus = (val: boolean) => {
+    setIsCarePlus(val);
+    syncAccountData({ isCarePlus: val });
   };
 
   const resetAllData = () => {
@@ -255,10 +305,11 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
         restockPads,
         cycleStatus,
         isCarePlus,
-        setIsCarePlus,
+        setIsCarePlus: handleSetCarePlus,
         timeSinceLastPadChangeMinutes,
         isPadChangeDue,
         resetAllData,
+        healthProfile,
       }}
     >
       {children}

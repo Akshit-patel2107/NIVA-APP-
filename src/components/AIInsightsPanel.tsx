@@ -25,7 +25,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export function AIInsightsPanel() {
-  const { cycleStatus, settings, dailyLogs, isCarePlus, setIsCarePlus } = useCycle();
+  const { cycleStatus, settings, dailyLogs, isCarePlus, setIsCarePlus, healthProfile } = useCycle();
   const todayIso = formatDateToIso(new Date());
   const todayLog = dailyLogs[todayIso];
 
@@ -64,6 +64,7 @@ export function AIInsightsPanel() {
         symptoms: todayLog?.symptoms || [],
         moods: todayLog?.moods || [],
         notes: todayLog?.notes || '',
+        healthProfile: healthProfile || null,
       };
 
       const res = await fetch('/api/ai/cycle-insights', {
@@ -88,7 +89,7 @@ export function AIInsightsPanel() {
 
   useEffect(() => {
     fetchCycleInsights();
-  }, [cycleStatus.currentDay, cycleStatus.phase]);
+  }, [cycleStatus.currentDay, cycleStatus.phase, healthProfile?.lifeStage, healthProfile?.healthConditions]);
 
   // Handle Ask Companion
   const handleAskQuestion = async (customQ?: string) => {
@@ -106,6 +107,7 @@ export function AIInsightsPanel() {
             cycleDay: cycleStatus.currentDay,
             phase: cycleStatus.phaseName,
             symptoms: todayLog?.symptoms || [],
+            healthProfile: healthProfile || null,
           },
         }),
       });

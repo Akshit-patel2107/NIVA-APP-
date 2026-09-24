@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CycleProvider, useCycle } from './context/CycleContext';
 import { Header } from './components/Header';
 import { DiscreetModeBanner } from './components/DiscreetModeBanner';
@@ -9,15 +10,18 @@ import { PadStoreAndEcosystem } from './components/PadStoreAndEcosystem';
 import { HealthAcademy } from './components/HealthAcademy';
 import { DailyLogModal } from './components/DailyLogModal';
 import { EmergencyHelpModal } from './components/EmergencyHelpModal';
+import { AuthModal } from './components/AuthModal';
+import { GirlsHealthSetupModal } from './components/GirlsHealthSetupModal';
+import { PinLockOverlay } from './components/PinLockOverlay';
 import { Footer } from './components/Footer';
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isEmergencyOpen, setIsEmergencyOpen] = useState<boolean>(false);
+  const { isHealthSetupOpen, setIsHealthSetupOpen } = useAuth();
 
   const handleOpenQR = () => {
     setActiveTab('store');
-    // Scroll smoothly to QR section if already on store
     setTimeout(() => {
       window.scrollTo({ top: 380, behavior: 'smooth' });
     }, 100);
@@ -25,7 +29,7 @@ function MainApp() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF7F5] text-[#2D2328]">
-      {/* Top Header */}
+      {/* Top Navigation & Profile Header */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -56,12 +60,18 @@ function MainApp() {
         {activeTab === 'academy' && <HealthAcademy />}
       </main>
 
-      {/* Global Modals */}
+      {/* Global Modals & Vault Protection */}
       <DailyLogModal />
       <EmergencyHelpModal
         isOpen={isEmergencyOpen}
         onClose={() => setIsEmergencyOpen(false)}
       />
+      <AuthModal />
+      <GirlsHealthSetupModal
+        isOpen={isHealthSetupOpen}
+        onClose={() => setIsHealthSetupOpen(false)}
+      />
+      <PinLockOverlay />
 
       {/* Footer */}
       <Footer />
@@ -71,8 +81,10 @@ function MainApp() {
 
 export default function App() {
   return (
-    <CycleProvider>
-      <MainApp />
-    </CycleProvider>
+    <AuthProvider>
+      <CycleProvider>
+        <MainApp />
+      </CycleProvider>
+    </AuthProvider>
   );
 }
