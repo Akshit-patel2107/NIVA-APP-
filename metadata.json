@@ -1,0 +1,7 @@
+{
+  "name": "NIVA - Menstrual Care & Smart Cycle Companion",
+  "description": "NIVA combines organic menstrual hygiene products with a smart cycle companion for period tracking, fertility estimation, AI wellness insights, and product reminders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
